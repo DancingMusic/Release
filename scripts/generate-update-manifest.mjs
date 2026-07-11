@@ -13,11 +13,15 @@ const version = arg('version');
 const tag = arg('tag', version ? `v${version}` : undefined);
 const channel = arg('channel', version?.includes('-') ? 'beta' : 'stable');
 const output = path.resolve(arg('output', `update/${channel}.json`));
+const providers = new Set(arg('providers', 'github,gitee').split(',').filter(Boolean));
 
 if (!version || !tag || !/^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/.test(version)) {
   throw new Error('Usage: node scripts/generate-update-manifest.mjs --assets=DIR --version=X.Y.Z --tag=vX.Y.Z');
 }
 if (!['stable', 'beta'].includes(channel)) throw new Error('channel must be stable or beta');
+if (providers.size === 0 || [...providers].some(provider => !['github', 'gitee'].includes(provider))) {
+  throw new Error('providers must contain github and/or gitee');
+}
 
 function artifactKey(file) {
   if (/arm64\.(?:dmg|zip)$/i.test(file)) return 'darwin-arm64';
@@ -41,8 +45,8 @@ for (const file of (await readdir(assetsDir)).sort()) {
     sha256: createHash('sha256').update(bytes).digest('hex'),
     size,
     urls: [
-      `https://github.com/DancingMusic/Release/releases/download/${encodeURIComponent(tag)}/${encodeURIComponent(file)}`,
-      `https://gitee.com/dancingmusic/Release/releases/download/${encodeURIComponent(tag)}/${encodeURIComponent(file)}`,
+      ...(providers.has('github') ? [`https://github.com/DancingMusic/Release/releases/download/${encodeURIComponent(tag)}/${encodeURIComponent(file)}`] : []),
+      ...(providers.has('gitee') ? [`https://gitee.com/dancingmusic/Release/releases/download/${encodeURIComponent(tag)}/${encodeURIComponent(file)}`] : []),
     ],
   };
 }
