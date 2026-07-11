@@ -48,6 +48,10 @@ for (const file of (await readdir(assetsDir)).sort()) {
 }
 
 if (!Object.keys(artifacts).length) throw new Error(`No supported desktop packages found in ${assetsDir}`);
+const requiredPlatforms = ['darwin-arm64', 'darwin-x64', 'win32-x64', 'linux-x64'];
+for (const platform of requiredPlatforms) {
+  if (!artifacts[platform]) throw new Error(`Missing required desktop package for ${platform}`);
+}
 
 const manifest = {
   schemaVersion: 1,

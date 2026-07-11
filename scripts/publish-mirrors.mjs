@@ -1,0 +1,153 @@
+#!/usr/bin/env node
+import { execFileSync } from 'node:child_process';
+import { createHash } from 'node:crypto';
+import { readFile, readdir, stat, writeFile } from 'node:fs/promises';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+const value = name => process.argv.find(item => item.startsWith(`--${name}=`))?.slice(name.length + 3);
+const assetsDir = path.resolve(value('assets') ?? 'assets');
+const version = value('version');
+const tag = value('tag') ?? (version ? `v${version}` : '');
+const channel = value('channel') ?? (version?.includes('-') ? 'beta' : 'stable');
+const githubToken = process.env.RELEASE_REPO_TOKEN;
+const giteeToken = process.env.GITEE_RELEASE_TOKEN;
+
+if (!version || !/^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/.test(version) || !tag) {
+  throw new Error('Usage: publish-mirrors.mjs --assets=DIR --version=X.Y.Z --tag=vX.Y.Z');
+}
+if (!githubToken || !giteeToken) throw new Error('RELEASE_REPO_TOKEN and GITEE_RELEASE_TOKEN are required');
+if (!['stable', 'beta'].includes(channel)) throw new Error('channel must be stable or beta');
+
+const privateName = /(?:\.map|\.pdb|\.sym|\.dSYM(?:\.zip)?|symbols\.zip|builder-debug\.yml|codesign-|notarization-)/i;
+const publicName = /(?:\.dmg|\.zip|\.exe|\.AppImage|dancingmusic-dist\.tar\.gz)$/i;
+const files = [];
+for (const name of (await readdir(assetsDir)).sort()) {
+  const filePath = path.join(assetsDir, name);
+  if (!(await stat(filePath)).isFile() || !publicName.test(name)) continue;
+  if (privateName.test(name)) throw new Error(`Private diagnostic matched public package list: ${name}`);
+  const bytes = await readFile(filePath);
+  files.push({ name, filePath, size: bytes.length, sha256: createHash('sha256').update(bytes).digest('hex') });
+}
+if (!files.length) throw new Error(`No public packages found in ${assetsDir}`);
+
+async function request(url, options = {}, token = githubToken) {
+  const headers = { Accept: 'application/json', ...options.headers };
+  if (token) headers.Authorization = `Bearer ${token}`;
+  const response = await fetch(url, { ...options, headers });
+  if (!response.ok) throw new Error(`${options.method ?? 'GET'} ${url}: ${response.status} ${await response.text()}`);
+  if (response.status === 204) return null;
+  const text = await response.text();
+  return text ? JSON.parse(text) : null;
+}
+
+async function githubRelease() {
+  const base = 'https://api.github.com/repos/DancingMusic/Release';
+  let release;
+  const existing = await fetch(`${base}/releases/tags/${encodeURIComponent(tag)}`, {
+    headers: { Accept: 'application/vnd.github+json', Authorization: `Bearer ${githubToken}` },
+  });
+  if (existing.ok) release = await existing.json();
+  else if (existing.status === 404) {
+    release = await request(`${base}/releases`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ tag_name: tag, target_commitish: 'main', name: tag, prerelease: channel === 'beta' }),
+    });
+  } else throw new Error(`GitHub release lookup failed: ${existing.status} ${await existing.text()}`);
+
+  const current = new Map(release.assets.map(asset => [asset.name, asset]));
+  for (const file of files) {
+    if (current.has(file.name)) await request(`${base}/releases/assets/${current.get(file.name).id}`, { method: 'DELETE' });
+    const bytes = await readFile(file.filePath);
+    await request(`${release.upload_url.replace('{?name,label}', '')}?name=${encodeURIComponent(file.name)}`, {
+      method: 'POST', headers: { 'Content-Type': 'application/octet-stream' }, body: bytes,
+    });
+  }
+  const verified = await request(`${base}/releases/${release.id}/assets?per_page=100`);
+  await verifyAssets('GitHub', verified.map(asset => ({ name: asset.name, size: asset.size, url: asset.browser_download_url })));
+  return new Map(verified.map(asset => [asset.name, asset.browser_download_url]));
+}
+
+async function giteeRelease() {
+  const base = 'https://gitee.com/api/v5/repos/dancingmusic/Release';
+  const auth = url => `${url}${url.includes('?') ? '&' : '?'}access_token=${encodeURIComponent(giteeToken)}`;
+  let release;
+  const list = await request(auth(`${base}/releases?per_page=100`), {}, null);
+  release = list.find(item => item.tag_name === tag);
+  if (!release) {
+    release = await request(auth(`${base}/releases`), {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ tag_name: tag, name: tag, body: `DancingMusic ${tag}`, prerelease: channel === 'beta' }),
+    }, null);
+  }
+  const oldAssets = new Map((release.assets ?? []).map(asset => [asset.name, asset]));
+  for (const file of files) {
+    const old = oldAssets.get(file.name);
+    if (old?.id) await request(auth(`${base}/releases/${release.id}/attach_files/${old.id}`), { method: 'DELETE' }, null);
+    const form = new FormData();
+    form.append('file', new Blob([await readFile(file.filePath)]), file.name);
+    await request(auth(`${base}/releases/${release.id}/attach_files`), { method: 'POST', body: form }, null);
+  }
+  const refreshed = await request(auth(`${base}/releases/${release.id}`), {}, null);
+  await verifyAssets('Gitee', (refreshed.assets ?? []).map(asset => ({ name: asset.name, size: asset.size, url: asset.browser_download_url })));
+  return new Map((refreshed.assets ?? []).map(asset => [asset.name, asset.browser_download_url]));
+}
+
+async function verifyAssets(label, remote) {
+  const byName = new Map(remote.map(item => [item.name, item]));
+  for (const file of files) {
+    const asset = byName.get(file.name);
+    if (!asset || Number(asset.size) !== file.size || !asset.url) throw new Error(`${label} package missing or size mismatch: ${file.name}`);
+    const response = await fetch(asset.url, { redirect: 'follow' });
+    if (!response.ok) throw new Error(`${label} package download failed: ${file.name} (${response.status})`);
+    const bytes = Buffer.from(await response.arrayBuffer());
+    const sha256 = createHash('sha256').update(bytes).digest('hex');
+    if (bytes.length !== file.size || sha256 !== file.sha256) throw new Error(`${label} package integrity mismatch: ${file.name}`);
+  }
+}
+
+async function putManifest(provider, content) {
+  const target = `update/${channel}.json`;
+  const message = `release: publish ${channel} manifest for ${tag}`;
+  if (provider === 'github') {
+    const base = `https://api.github.com/repos/DancingMusic/Release/contents/${target}`;
+    const old = await fetch(base, { headers: { Authorization: `Bearer ${githubToken}`, Accept: 'application/vnd.github+json' } });
+    const sha = old.ok ? (await old.json()).sha : undefined;
+    await request(base, {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ message, content: Buffer.from(content).toString('base64'), branch: 'main', ...(sha ? { sha } : {}) }),
+    });
+    return;
+  }
+  const base = `https://gitee.com/api/v5/repos/dancingmusic/Release/contents/${target}`;
+  const auth = url => `${url}${url.includes('?') ? '&' : '?'}access_token=${encodeURIComponent(giteeToken)}`;
+  const old = await fetch(auth(`${base}?ref=main`));
+  const sha = old.ok ? (await old.json()).sha : undefined;
+  await request(auth(base), {
+    method: sha ? 'PUT' : 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ message, content: Buffer.from(content).toString('base64'), branch: 'main', ...(sha ? { sha } : {}) }),
+  }, null);
+}
+
+const githubUrls = await githubRelease();
+const giteeUrls = await giteeRelease();
+
+const manifestPath = path.join(root, 'update', `${channel}.json`);
+execFileSync(process.execPath, [path.join(root, 'scripts/generate-update-manifest.mjs'), `--assets=${assetsDir}`, `--version=${version}`, `--tag=${tag}`, `--channel=${channel}`, `--output=${manifestPath}`], { stdio: 'inherit' });
+execFileSync(process.execPath, [path.join(root, 'scripts/validate-update-manifest.mjs'), manifestPath], { stdio: 'inherit' });
+const manifestValue = JSON.parse(await readFile(manifestPath, 'utf8'));
+for (const artifact of Object.values(manifestValue.artifacts)) {
+  const githubUrl = githubUrls.get(artifact.file);
+  const giteeUrl = giteeUrls.get(artifact.file);
+  if (!githubUrl || !giteeUrl) throw new Error(`Mirror URL missing after upload: ${artifact.file}`);
+  artifact.urls = [githubUrl, giteeUrl];
+}
+const manifest = `${JSON.stringify(manifestValue, null, 2)}\n`;
+await writeFile(manifestPath, manifest, 'utf8');
+execFileSync(process.execPath, [path.join(root, 'scripts/validate-update-manifest.mjs'), manifestPath], { stdio: 'inherit' });
+
+// The manifest is intentionally the last write, after both mirrors passed size verification.
+await putManifest('github', manifest);
+await putManifest('gitee', manifest);
+console.log(`Published ${tag} packages and identical ${channel} manifests to GitHub and Gitee.`);
