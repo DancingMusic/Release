@@ -28,6 +28,9 @@ function artifactKey(file) {
   if (/x64\.(?:dmg|zip)$/i.test(file)) return 'darwin-x64';
   if (/Setup-.*\.exe$/i.test(file)) return 'win32-x64';
   if (/(?:x64|x86_64)\.AppImage$/i.test(file)) return 'linux-x64';
+  if (/-android\.apk$/i.test(file)) return 'android-apk';
+  if (/-android\.aab$/i.test(file)) return 'android-aab';
+  if (/-ios\.ipa$/i.test(file)) return 'ios';
   return null;
 }
 
@@ -51,7 +54,7 @@ for (const file of (await readdir(assetsDir)).sort()) {
   };
 }
 
-if (!Object.keys(artifacts).length) throw new Error(`No supported desktop packages found in ${assetsDir}`);
+if (!Object.keys(artifacts).length) throw new Error(`No supported packages found in ${assetsDir}`);
 const requiredPlatforms = ['darwin-arm64', 'darwin-x64', 'win32-x64', 'linux-x64'];
 for (const platform of requiredPlatforms) {
   if (!artifacts[platform]) throw new Error(`Missing required desktop package for ${platform}`);

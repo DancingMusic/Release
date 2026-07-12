@@ -31,8 +31,9 @@ Required secrets live in the host repository/environment, never in this repo:
   write access to `dancingmusic/Release`;
 - `RELEASE_META_TOKEN`: GitHub token for the private diagnostics repository.
 
-`publish-mirrors.mjs` accepts only installable public packages and the Web
-bundle. Source maps, symbols and signing/notarization diagnostics must be sent
+`publish-mirrors.mjs` accepts desktop installers, Android APK/AAB, signed iOS
+IPA packages and the Web bundle. Android R8 mapping, iOS dSYM, source maps,
+symbols and signing/notarization diagnostics must be sent
 directly to the private metadata repository; they are never intermediary
 artifacts in a public repository.
 

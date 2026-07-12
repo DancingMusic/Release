@@ -21,7 +21,7 @@ if (!githubToken || !giteeToken) throw new Error('RELEASE_REPO_TOKEN and GITEE_R
 if (!['stable', 'beta'].includes(channel)) throw new Error('channel must be stable or beta');
 
 const privateName = /(?:\.map|\.pdb|\.sym|\.dSYM(?:\.zip)?|symbols\.zip|builder-debug\.yml|codesign-|notarization-)/i;
-const publicName = /(?:\.dmg|\.zip|\.exe|\.AppImage|dancingmusic-dist\.tar\.gz)$/i;
+const publicName = /(?:\.dmg|\.zip|\.exe|\.AppImage|\.apk|\.aab|\.ipa|dancingmusic-dist\.tar\.gz)$/i;
 const files = [];
 for (const name of (await readdir(assetsDir)).sort()) {
   const filePath = path.join(assetsDir, name);
