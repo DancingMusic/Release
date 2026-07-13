@@ -27,8 +27,8 @@ Required secrets live in the host repository/environment, never in this repo:
 
 - `RELEASE_REPO_TOKEN`: fine-grained GitHub token with Contents write access to
   `DancingMusic/Release`;
-- `GITEE_RELEASE_TOKEN`: Gitee personal access token with release and repository
-  write access to `dancingmusic/Release`;
+- `GITEE_RELEASE_TOKEN`: optional Gitee personal access token with release and
+  repository write access to `dancingmusic/Release`;
 - `RELEASE_META_TOKEN`: GitHub token for the private diagnostics repository.
 
 `publish-mirrors.mjs` accepts desktop installers, Android APK/AAB, signed iOS
@@ -36,6 +36,12 @@ IPA packages and the Web bundle. Android R8 mapping, iOS dSYM, source maps,
 symbols and signing/notarization diagnostics must be sent
 directly to the private metadata repository; they are never intermediary
 artifacts in a public repository.
+
+GitHub is the required primary release provider. When the Gitee token is not
+configured, publication continues on GitHub and the generated manifest contains
+only verified GitHub URLs; Gitee's existing manifest is left unchanged and an
+explicit warning is emitted. Once the token is configured, the same command
+verifies both mirrors before publishing manifests that contain both URLs.
 
 Never store plaintext signing private keys or passwords. Use repository secrets
 and keep private diagnostics in the restricted metadata repository.

@@ -17,15 +17,20 @@ const giteeToken = process.env.GITEE_RELEASE_TOKEN;
 if (!version || !/^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/.test(version) || !tag) {
   throw new Error('Usage: publish-mirrors.mjs --assets=DIR --version=X.Y.Z --tag=vX.Y.Z');
 }
-if (!githubToken || !giteeToken) throw new Error('RELEASE_REPO_TOKEN and GITEE_RELEASE_TOKEN are required');
+if (!githubToken) throw new Error('RELEASE_REPO_TOKEN is required');
 if (!['stable', 'beta'].includes(channel)) throw new Error('channel must be stable or beta');
 
 const privateName = /(?:\.map|\.pdb|\.sym|\.dSYM(?:\.zip)?|symbols\.zip|builder-debug\.yml|codesign-|notarization-)/i;
-const publicName = /(?:\.dmg|\.zip|\.exe|\.AppImage|\.apk|\.aab|\.ipa|dancingmusic-dist\.tar\.gz)$/i;
+const publicName = /^(?:DancingMusic-.+-(?:arm64|x64)\.(?:dmg|zip)|DancingMusic-Setup-.+\.exe|DancingMusic-.+-(?:x86_64|x64)\.AppImage|DancingMusic-.+-android\.(?:apk|aab)|DancingMusic-.+-ios\.ipa|dancingmusic-dist\.tar\.gz)$/i;
+const mobilePackageName = /\.(?:apk|aab|ipa)$/i;
 const files = [];
 for (const name of (await readdir(assetsDir)).sort()) {
   const filePath = path.join(assetsDir, name);
-  if (!(await stat(filePath)).isFile() || !publicName.test(name)) continue;
+  if (!(await stat(filePath)).isFile()) continue;
+  if (mobilePackageName.test(name) && !publicName.test(name)) {
+    throw new Error(`Unsupported mobile package filename: ${name}`);
+  }
+  if (!publicName.test(name)) continue;
   if (privateName.test(name)) throw new Error(`Private diagnostic matched public package list: ${name}`);
   const bytes = await readFile(filePath);
   files.push({ name, filePath, size: bytes.length, sha256: createHash('sha256').update(bytes).digest('hex') });
@@ -130,24 +135,30 @@ async function putManifest(provider, content) {
   }, null);
 }
 
-const githubUrls = await githubRelease();
-const giteeUrls = await giteeRelease();
-
 const manifestPath = path.join(root, 'update', `${channel}.json`);
-execFileSync(process.execPath, [path.join(root, 'scripts/generate-update-manifest.mjs'), `--assets=${assetsDir}`, `--version=${version}`, `--tag=${tag}`, `--channel=${channel}`, `--output=${manifestPath}`], { stdio: 'inherit' });
+const providers = ['github', ...(giteeToken ? ['gitee'] : [])];
+const manifestCommand = [path.join(root, 'scripts/generate-update-manifest.mjs'), `--assets=${assetsDir}`, `--version=${version}`, `--tag=${tag}`, `--channel=${channel}`, `--providers=${providers.join(',')}`, `--output=${manifestPath}`];
+
+// Validate filenames and the complete candidate manifest before mutating either provider.
+execFileSync(process.execPath, manifestCommand, { stdio: 'inherit' });
 execFileSync(process.execPath, [path.join(root, 'scripts/validate-update-manifest.mjs'), manifestPath], { stdio: 'inherit' });
+
+const githubUrls = await githubRelease();
+const giteeUrls = giteeToken ? await giteeRelease() : null;
+if (!giteeToken) console.warn('GITEE_RELEASE_TOKEN is not configured; publishing the verified GitHub mirror only.');
+
 const manifestValue = JSON.parse(await readFile(manifestPath, 'utf8'));
 for (const artifact of Object.values(manifestValue.artifacts)) {
   const githubUrl = githubUrls.get(artifact.file);
-  const giteeUrl = giteeUrls.get(artifact.file);
-  if (!githubUrl || !giteeUrl) throw new Error(`Mirror URL missing after upload: ${artifact.file}`);
-  artifact.urls = [githubUrl, giteeUrl];
+  const giteeUrl = giteeUrls?.get(artifact.file);
+  if (!githubUrl || (giteeToken && !giteeUrl)) throw new Error(`Mirror URL missing after upload: ${artifact.file}`);
+  artifact.urls = [githubUrl, ...(giteeUrl ? [giteeUrl] : [])];
 }
 const manifest = `${JSON.stringify(manifestValue, null, 2)}\n`;
 await writeFile(manifestPath, manifest, 'utf8');
 execFileSync(process.execPath, [path.join(root, 'scripts/validate-update-manifest.mjs'), manifestPath], { stdio: 'inherit' });
 
-// The manifest is intentionally the last write, after both mirrors passed size verification.
+// The manifest is intentionally the last write, after every configured provider passed size verification.
 await putManifest('github', manifest);
-await putManifest('gitee', manifest);
-console.log(`Published ${tag} packages and identical ${channel} manifests to GitHub and Gitee.`);
+if (giteeToken) await putManifest('gitee', manifest);
+console.log(`Published ${tag} packages and ${channel} manifest to ${providers.join(' and ')}.`);
