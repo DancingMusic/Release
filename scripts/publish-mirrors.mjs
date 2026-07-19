@@ -55,10 +55,17 @@ async function githubRelease() {
   });
   if (existing.ok) release = await existing.json();
   else if (existing.status === 404) {
-    release = await request(`${base}/releases`, {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ tag_name: tag, target_commitish: 'main', name: tag, prerelease: channel === 'beta' }),
-    });
+    // GitHub does not expose draft releases through /releases/tags/:tag.
+    // Find the staged draft explicitly so the finalizer promotes it instead of
+    // creating a second public release for the same package version.
+    const releases = await request(`${base}/releases?per_page=100`);
+    release = releases.find(candidate => candidate.tag_name === tag);
+    if (!release) {
+      release = await request(`${base}/releases`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tag_name: tag, target_commitish: 'main', name: tag, prerelease: channel === 'beta' }),
+      });
+    }
   } else throw new Error(`GitHub release lookup failed: ${existing.status} ${await existing.text()}`);
 
   const current = new Map(release.assets.map(asset => [asset.name, asset]));
