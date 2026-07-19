@@ -11,6 +11,7 @@ const assetsDir = path.resolve(value('assets') ?? 'assets');
 const version = value('version');
 const tag = value('tag') ?? (version ? `v${version}` : '');
 const channel = value('channel') ?? (version?.includes('-') ? 'beta' : 'stable');
+const linuxGpgFingerprint = value('linux-gpg-fingerprint') ?? '';
 const githubToken = process.env.RELEASE_REPO_TOKEN;
 const giteeToken = process.env.GITEE_RELEASE_TOKEN;
 
@@ -21,10 +22,11 @@ if (!githubToken) throw new Error('RELEASE_REPO_TOKEN is required');
 if (!['stable', 'beta'].includes(channel)) throw new Error('channel must be stable or beta');
 
 const privateName = /(?:\.map|\.pdb|\.sym|\.dSYM(?:\.zip)?|symbols\.zip|builder-debug\.yml|codesign-|notarization-)/i;
-const publicName = /^(?:DancingMusic-.+-(?:arm64|x64)\.(?:dmg|zip)|DancingMusic-Setup-.+\.exe|DancingMusic-.+-(?:x86_64|x64)\.AppImage|DancingMusic-.+-android\.(?:apk|aab)|DancingMusic-.+-ios\.ipa|dancingmusic-dist\.tar\.gz)$/i;
+const publicName = /^(?:DancingMusic-.+-(?:arm64|x64)\.(?:dmg|zip)|DancingMusic-Setup-.+\.exe|DancingMusic-.+-(?:x86_64|x64)\.AppImage(?:\.asc)?|DancingMusic-release-signing-key\.asc|DancingMusic-.+-android\.(?:apk|aab)|DancingMusic-.+-ios\.ipa|dancingmusic-dist\.tar\.gz)$/i;
 const mobilePackageName = /\.(?:apk|aab|ipa)$/i;
 const files = [];
-for (const name of (await readdir(assetsDir)).sort()) {
+const assetNames = (await readdir(assetsDir)).sort();
+for (const name of assetNames) {
   const filePath = path.join(assetsDir, name);
   if (!(await stat(filePath)).isFile()) continue;
   if (mobilePackageName.test(name) && !publicName.test(name)) {
@@ -36,6 +38,14 @@ for (const name of (await readdir(assetsDir)).sort()) {
   files.push({ name, filePath, size: bytes.length, sha256: createHash('sha256').update(bytes).digest('hex') });
 }
 if (!files.length) throw new Error(`No public packages found in ${assetsDir}`);
+for (const name of assetNames.filter(name => name.endsWith('.AppImage.asc'))) {
+  if (!assetNames.includes(name.slice(0, -4)) || !assetNames.includes('DancingMusic-release-signing-key.asc')) {
+    throw new Error(`OpenPGP sidecar requires its AppImage and DancingMusic-release-signing-key.asc: ${name}`);
+  }
+  if (!/^(?:[a-fA-F0-9]{40}|[a-fA-F0-9]{64})$/.test(linuxGpgFingerprint.replace(/\s/g, ''))) {
+    throw new Error('A signed Linux AppImage requires --linux-gpg-fingerprint');
+  }
+}
 
 async function request(url, options = {}, token = githubToken) {
   const headers = { Accept: 'application/json', ...options.headers };
@@ -158,7 +168,7 @@ async function putManifest(provider, content) {
 
 const manifestPath = path.join(root, 'update', `${channel}.json`);
 const providers = ['github', ...(giteeToken ? ['gitee'] : [])];
-const manifestCommand = [path.join(root, 'scripts/generate-update-manifest.mjs'), `--assets=${assetsDir}`, `--version=${version}`, `--tag=${tag}`, `--channel=${channel}`, `--providers=${providers.join(',')}`, `--output=${manifestPath}`];
+const manifestCommand = [path.join(root, 'scripts/generate-update-manifest.mjs'), `--assets=${assetsDir}`, `--version=${version}`, `--tag=${tag}`, `--channel=${channel}`, `--providers=${providers.join(',')}`, `--linux-gpg-fingerprint=${linuxGpgFingerprint}`, `--output=${manifestPath}`];
 
 // Validate filenames and the complete candidate manifest before mutating either provider.
 execFileSync(process.execPath, manifestCommand, { stdio: 'inherit' });
@@ -174,6 +184,17 @@ for (const artifact of Object.values(manifestValue.artifacts)) {
   const giteeUrl = giteeUrls?.get(artifact.file);
   if (!githubUrl || (giteeToken && !giteeUrl)) throw new Error(`Mirror URL missing after upload: ${artifact.file}`);
   artifact.urls = [githubUrl, ...(giteeUrl ? [giteeUrl] : [])];
+  if (artifact.signature) {
+    const signatureGithubUrl = githubReleaseResult.urls.get(artifact.signature.file);
+    const signatureGiteeUrl = giteeUrls?.get(artifact.signature.file);
+    if (!signatureGithubUrl || (giteeToken && !signatureGiteeUrl)) throw new Error(`Mirror URL missing after upload: ${artifact.signature.file}`);
+    artifact.signature.urls = [signatureGithubUrl, ...(signatureGiteeUrl ? [signatureGiteeUrl] : [])];
+
+    const publicKeyGithubUrl = githubReleaseResult.urls.get(artifact.signature.publicKey.file);
+    const publicKeyGiteeUrl = giteeUrls?.get(artifact.signature.publicKey.file);
+    if (!publicKeyGithubUrl || (giteeToken && !publicKeyGiteeUrl)) throw new Error(`Mirror URL missing after upload: ${artifact.signature.publicKey.file}`);
+    artifact.signature.publicKey.urls = [publicKeyGithubUrl, ...(publicKeyGiteeUrl ? [publicKeyGiteeUrl] : [])];
+  }
 }
 const manifest = `${JSON.stringify(manifestValue, null, 2)}\n`;
 await writeFile(manifestPath, manifest, 'utf8');

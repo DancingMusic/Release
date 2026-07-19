@@ -30,6 +30,10 @@ packages and channel manifests here.
 - GitHub: international source.
 - Gitee (`dancingmusic/Release`): domestic source.
 - Both sources use the same tag, package filename, SHA-256 and manifest.
+- A signed Linux AppImage is accompanied by an armored `.asc` detached signature.
+  The release manifest binds the AppImage, signature, public key and OpenPGP
+  fingerprint together so manual installers can verify the same artifact that
+  the updater hashes.
 - Publish `update/stable.json` or `update/beta.json` only after every package
   referenced by that manifest is available on that mirror.
 - A mirror may lag; desktop clients validate and fall back to the other source.

@@ -14,6 +14,8 @@ const tag = arg('tag', version ? `v${version}` : undefined);
 const channel = arg('channel', version?.includes('-') ? 'beta' : 'stable');
 const output = path.resolve(arg('output', `update/${channel}.json`));
 const providers = new Set(arg('providers', 'github,gitee').split(',').filter(Boolean));
+const linuxGpgFingerprint = (arg('linux-gpg-fingerprint', '') ?? '').replace(/\s/g, '').toUpperCase();
+const linuxSigningKeyFile = 'DancingMusic-release-signing-key.asc';
 
 if (!version || !tag || !/^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/.test(version)) {
   throw new Error('Usage: node scripts/generate-update-manifest.mjs --assets=DIR --version=X.Y.Z --tag=vX.Y.Z');
@@ -35,7 +37,10 @@ function artifactKey(file) {
 }
 
 const artifacts = {};
-for (const file of (await readdir(assetsDir)).sort()) {
+const assetNames = (await readdir(assetsDir)).sort();
+const publicKeyPath = path.join(assetsDir, linuxSigningKeyFile);
+const hasLinuxSigningKey = assetNames.includes(linuxSigningKeyFile);
+for (const file of assetNames) {
   const key = artifactKey(file);
   if (!key) continue;
   // Prefer the native installer when both macOS dmg and zip are present.
@@ -52,6 +57,35 @@ for (const file of (await readdir(assetsDir)).sort()) {
       ...(providers.has('gitee') ? [`https://gitee.com/dancingmusic/Release/releases/download/${encodeURIComponent(tag)}/${encodeURIComponent(file)}`] : []),
     ],
   };
+  if (key === 'linux-x64' && assetNames.includes(`${file}.asc`)) {
+    if (!/^(?:[A-F0-9]{40}|[A-F0-9]{64})$/.test(linuxGpgFingerprint) || !hasLinuxSigningKey) {
+      throw new Error('A signed Linux AppImage requires --linux-gpg-fingerprint and DancingMusic-release-signing-key.asc');
+    }
+    const signatureFile = `${file}.asc`;
+    const signaturePath = path.join(assetsDir, signatureFile);
+    const signatureBytes = await readFile(signaturePath);
+    const publicKeyBytes = await readFile(publicKeyPath);
+    artifacts[key].signature = {
+      type: 'openpgp-detached',
+      file: signatureFile,
+      sha256: createHash('sha256').update(signatureBytes).digest('hex'),
+      size: (await stat(signaturePath)).size,
+      urls: [
+        ...(providers.has('github') ? [`https://github.com/DancingMusic/Release/releases/download/${encodeURIComponent(tag)}/${encodeURIComponent(signatureFile)}`] : []),
+        ...(providers.has('gitee') ? [`https://gitee.com/dancingmusic/Release/releases/download/${encodeURIComponent(tag)}/${encodeURIComponent(signatureFile)}`] : []),
+      ],
+      fingerprint: linuxGpgFingerprint,
+      publicKey: {
+        file: linuxSigningKeyFile,
+        sha256: createHash('sha256').update(publicKeyBytes).digest('hex'),
+        size: (await stat(publicKeyPath)).size,
+        urls: [
+          ...(providers.has('github') ? [`https://github.com/DancingMusic/Release/releases/download/${encodeURIComponent(tag)}/${encodeURIComponent(linuxSigningKeyFile)}`] : []),
+          ...(providers.has('gitee') ? [`https://gitee.com/dancingmusic/Release/releases/download/${encodeURIComponent(tag)}/${encodeURIComponent(linuxSigningKeyFile)}`] : []),
+        ],
+      },
+    };
+  }
 }
 
 if (!Object.keys(artifacts).length) throw new Error(`No supported packages found in ${assetsDir}`);
