@@ -1,56 +1,56 @@
 {
   "schemaVersion": 1,
   "channel": "beta",
-  "version": "0.2.0-dev.2.main.37.1",
-  "publishedAt": "2026-07-19T16:20:48.996Z",
-  "releaseNotesUrl": "https://github.com/DancingMusic/Release/releases/tag/v0.2.0-dev.2.main.37.1",
+  "version": "0.2.0-dev.2.main.38.1",
+  "publishedAt": "2026-07-19T16:40:36.251Z",
+  "releaseNotesUrl": "https://github.com/DancingMusic/Release/releases/tag/v0.2.0-dev.2.main.38.1",
   "artifacts": {
     "android-aab": {
-      "file": "DancingMusic-0.2.0-dev.2.main.37.1-android.aab",
+      "file": "DancingMusic-0.2.0-dev.2.main.38.1-android.aab",
       "sha256": "d437af93810ec696de7f9e170badb8d5084644dd9341e2924412c84cba36e26b",
       "size": 8108565,
       "urls": [
-        "https://github.com/DancingMusic/Release/releases/download/v0.2.0-dev.2.main.37.1/DancingMusic-0.2.0-dev.2.main.37.1-android.aab"
+        "https://github.com/DancingMusic/Release/releases/download/untagged-64a42db749a5d874e4fe/DancingMusic-0.2.0-dev.2.main.38.1-android.aab"
       ]
     },
     "android-apk": {
-      "file": "DancingMusic-0.2.0-dev.2.main.37.1-android.apk",
-      "sha256": "7db1573df3db737690ec5b85a82ae3c062cd70ab8e4f16859931acdeb95736a7",
+      "file": "DancingMusic-0.2.0-dev.2.main.38.1-android.apk",
+      "sha256": "38c54e6f943527a7bee59f714d99bb3a225c55b6929e2b53aca2af1901b1aa72",
       "size": 8134695,
       "urls": [
-        "https://github.com/DancingMusic/Release/releases/download/v0.2.0-dev.2.main.37.1/DancingMusic-0.2.0-dev.2.main.37.1-android.apk"
+        "https://github.com/DancingMusic/Release/releases/download/untagged-64a42db749a5d874e4fe/DancingMusic-0.2.0-dev.2.main.38.1-android.apk"
       ]
     },
     "darwin-arm64": {
-      "file": "DancingMusic-0.2.0-dev.2.main.37.1-arm64.dmg",
-      "sha256": "0aa21bb65530026cfb5866803daa4413221a2a37bcbac17113cefb8986edbb41",
-      "size": 118717052,
+      "file": "DancingMusic-0.2.0-dev.2.main.38.1-arm64.dmg",
+      "sha256": "3fc232a019da4051dc788dfda821276370f467dae8a5fdd951d2e397c452dc28",
+      "size": 118717036,
       "urls": [
-        "https://github.com/DancingMusic/Release/releases/download/v0.2.0-dev.2.main.37.1/DancingMusic-0.2.0-dev.2.main.37.1-arm64.dmg"
+        "https://github.com/DancingMusic/Release/releases/download/untagged-64a42db749a5d874e4fe/DancingMusic-0.2.0-dev.2.main.38.1-arm64.dmg"
       ]
     },
     "darwin-x64": {
-      "file": "DancingMusic-0.2.0-dev.2.main.37.1-x64.dmg",
-      "sha256": "0e8ebdeba3b789ffc53d0e0088f790ad4325885732f0842d7774ac11b07b3039",
-      "size": 124256104,
+      "file": "DancingMusic-0.2.0-dev.2.main.38.1-x64.dmg",
+      "sha256": "4a0ed5efb762a78daee428cc2be249c2e30b0de7c9af65c5cb7abc735f568a65",
+      "size": 124256143,
       "urls": [
-        "https://github.com/DancingMusic/Release/releases/download/v0.2.0-dev.2.main.37.1/DancingMusic-0.2.0-dev.2.main.37.1-x64.dmg"
+        "https://github.com/DancingMusic/Release/releases/download/untagged-64a42db749a5d874e4fe/DancingMusic-0.2.0-dev.2.main.38.1-x64.dmg"
       ]
     },
     "linux-x64": {
-      "file": "DancingMusic-0.2.0-dev.2.main.37.1-x86_64.AppImage",
-      "sha256": "ad1dde95232cbb8080182bc62884acda5ec3b2c0d4999b21baf0dbe6fbcc3751",
-      "size": 122057885,
+      "file": "DancingMusic-0.2.0-dev.2.main.38.1-x86_64.AppImage",
+      "sha256": "f8053fba2b4756b1a665046fde3360d8ada0bf667ec781e1acaa7beff7a620ca",
+      "size": 122057888,
       "urls": [
-        "https://github.com/DancingMusic/Release/releases/download/v0.2.0-dev.2.main.37.1/DancingMusic-0.2.0-dev.2.main.37.1-x86_64.AppImage"
+        "https://github.com/DancingMusic/Release/releases/download/untagged-64a42db749a5d874e4fe/DancingMusic-0.2.0-dev.2.main.38.1-x86_64.AppImage"
       ]
     },
     "win32-x64": {
-      "file": "DancingMusic-Setup-0.2.0-dev.2.main.37.1.exe",
-      "sha256": "7a56324b16a34bfe97a7675546caabf32cf8e7939ea9412078af90619abb5222",
-      "size": 99642245,
+      "file": "DancingMusic-Setup-0.2.0-dev.2.main.38.1.exe",
+      "sha256": "c81b75a605a29202be3d3b809dddab297d2881b129fd4de680031dc3bdcaa0e4",
+      "size": 99642349,
       "urls": [
-        "https://github.com/DancingMusic/Release/releases/download/v0.2.0-dev.2.main.37.1/DancingMusic-Setup-0.2.0-dev.2.main.37.1.exe"
+        "https://github.com/DancingMusic/Release/releases/download/untagged-64a42db749a5d874e4fe/DancingMusic-Setup-0.2.0-dev.2.main.38.1.exe"
       ]
     }
   }
