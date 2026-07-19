@@ -30,6 +30,8 @@ packages and channel manifests here.
 - GitHub: international source.
 - Gitee (`dancingmusic/Release`): domestic source.
 - Both sources use the same tag, package filename, SHA-256 and manifest.
+- The manifest uses canonical version-tag download URLs only after the hidden
+  GitHub draft has been published and those public URLs have been read back.
 - A signed Linux AppImage is accompanied by an armored `.asc` detached signature.
   The release manifest binds the AppImage, signature, public key and OpenPGP
   fingerprint together so manual installers can verify the same artifact that

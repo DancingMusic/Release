@@ -14,6 +14,7 @@ const channel = value('channel') ?? (version?.includes('-') ? 'beta' : 'stable')
 const linuxGpgFingerprint = value('linux-gpg-fingerprint') ?? '';
 const githubToken = process.env.RELEASE_REPO_TOKEN;
 const giteeToken = process.env.GITEE_RELEASE_TOKEN;
+const githubDownloadUrl = file => `https://github.com/DancingMusic/Release/releases/download/${encodeURIComponent(tag)}/${encodeURIComponent(file)}`;
 
 if (!version || !/^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/.test(version) || !tag) {
   throw new Error('Usage: publish-mirrors.mjs --assets=DIR --version=X.Y.Z --tag=vX.Y.Z');
@@ -88,7 +89,7 @@ async function githubRelease() {
   }
   const verified = await request(`${base}/releases/${release.id}/assets?per_page=100`);
   await verifyAssets('GitHub', verified.map(asset => ({ name: asset.name, size: asset.size, url: asset.url })), githubToken);
-  return { id: release.id, urls: new Map(verified.map(asset => [asset.name, asset.browser_download_url])) };
+  return { id: release.id };
 }
 
 async function giteeRelease() {
@@ -180,19 +181,19 @@ if (!giteeToken) console.warn('GITEE_RELEASE_TOKEN is not configured; publishing
 
 const manifestValue = JSON.parse(await readFile(manifestPath, 'utf8'));
 for (const artifact of Object.values(manifestValue.artifacts)) {
-  const githubUrl = githubReleaseResult.urls.get(artifact.file);
+  const githubUrl = githubDownloadUrl(artifact.file);
   const giteeUrl = giteeUrls?.get(artifact.file);
-  if (!githubUrl || (giteeToken && !giteeUrl)) throw new Error(`Mirror URL missing after upload: ${artifact.file}`);
+  if (giteeToken && !giteeUrl) throw new Error(`Mirror URL missing after upload: ${artifact.file}`);
   artifact.urls = [githubUrl, ...(giteeUrl ? [giteeUrl] : [])];
   if (artifact.signature) {
-    const signatureGithubUrl = githubReleaseResult.urls.get(artifact.signature.file);
+    const signatureGithubUrl = githubDownloadUrl(artifact.signature.file);
     const signatureGiteeUrl = giteeUrls?.get(artifact.signature.file);
-    if (!signatureGithubUrl || (giteeToken && !signatureGiteeUrl)) throw new Error(`Mirror URL missing after upload: ${artifact.signature.file}`);
+    if (giteeToken && !signatureGiteeUrl) throw new Error(`Mirror URL missing after upload: ${artifact.signature.file}`);
     artifact.signature.urls = [signatureGithubUrl, ...(signatureGiteeUrl ? [signatureGiteeUrl] : [])];
 
-    const publicKeyGithubUrl = githubReleaseResult.urls.get(artifact.signature.publicKey.file);
+    const publicKeyGithubUrl = githubDownloadUrl(artifact.signature.publicKey.file);
     const publicKeyGiteeUrl = giteeUrls?.get(artifact.signature.publicKey.file);
-    if (!publicKeyGithubUrl || (giteeToken && !publicKeyGiteeUrl)) throw new Error(`Mirror URL missing after upload: ${artifact.signature.publicKey.file}`);
+    if (giteeToken && !publicKeyGiteeUrl) throw new Error(`Mirror URL missing after upload: ${artifact.signature.publicKey.file}`);
     artifact.signature.publicKey.urls = [publicKeyGithubUrl, ...(publicKeyGiteeUrl ? [publicKeyGiteeUrl] : [])];
   }
 }
@@ -202,6 +203,7 @@ execFileSync(process.execPath, [path.join(root, 'scripts/validate-update-manifes
 
 // Make the staged GitHub assets public before the final manifest points at them.
 await publishGithubRelease(githubReleaseResult.id);
+await verifyAssets('GitHub public', files.map(file => ({ ...file, url: githubDownloadUrl(file.name) })));
 
 // The manifest is intentionally the last write, after every configured provider passed size verification.
 await putManifest('github', manifest);
