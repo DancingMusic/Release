@@ -77,7 +77,7 @@ async function githubRelease() {
     });
   }
   const verified = await request(`${base}/releases/${release.id}/assets?per_page=100`);
-  await verifyAssets('GitHub', verified.map(asset => ({ name: asset.name, size: asset.size, url: asset.browser_download_url })), githubToken);
+  await verifyAssets('GitHub', verified.map(asset => ({ name: asset.name, size: asset.size, url: asset.url })), githubToken);
   return { id: release.id, urls: new Map(verified.map(asset => [asset.name, asset.browser_download_url])) };
 }
 
@@ -113,7 +113,10 @@ async function verifyAssets(label, remote, token) {
     if (!asset || Number(asset.size) !== file.size || !asset.url) throw new Error(`${label} package missing or size mismatch: ${file.name}`);
     const response = await fetch(asset.url, {
       redirect: 'follow',
-      headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+      headers: token ? {
+        Accept: 'application/octet-stream',
+        Authorization: `Bearer ${token}`,
+      } : undefined,
     });
     if (!response.ok) throw new Error(`${label} package download failed: ${file.name} (${response.status})`);
     const bytes = Buffer.from(await response.arrayBuffer());
