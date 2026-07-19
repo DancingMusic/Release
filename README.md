@@ -7,6 +7,20 @@ This repository owns public update manifests and the matching GitHub/Gitee
 release packages. Private source maps, symbols, signing logs and credentials do
 not belong here.
 
+## Automation source
+
+`Release` intentionally does not run its own package build workflow. The host
+repository's `release-build.yml` builds the product and writes verified public
+packages and channel manifests here.
+
+- Every push to `DancingMusic/DancingMusic` `main` publishes a uniquely
+  versioned beta package (for example, `0.2.0-dev.2.main.418.1`) so existing
+  releases and assets remain immutable.
+- `v*` tag pushes remain build verification only. A manually confirmed
+  `workflow_dispatch` publication is used for stable releases.
+- The public channel manifest remains the final write, after every configured
+  mirror has uploaded and verified the referenced package bytes.
+
 ## Mirror rule
 
 - GitHub: international source.
