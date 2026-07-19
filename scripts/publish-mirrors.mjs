@@ -70,8 +70,8 @@ async function githubRelease() {
     });
   }
   const verified = await request(`${base}/releases/${release.id}/assets?per_page=100`);
-  await verifyAssets('GitHub', verified.map(asset => ({ name: asset.name, size: asset.size, url: asset.browser_download_url })));
-  return new Map(verified.map(asset => [asset.name, asset.browser_download_url]));
+  await verifyAssets('GitHub', verified.map(asset => ({ name: asset.name, size: asset.size, url: asset.browser_download_url })), githubToken);
+  return { id: release.id, urls: new Map(verified.map(asset => [asset.name, asset.browser_download_url])) };
 }
 
 async function giteeRelease() {
@@ -99,17 +99,28 @@ async function giteeRelease() {
   return new Map((refreshed.assets ?? []).map(asset => [asset.name, asset.browser_download_url]));
 }
 
-async function verifyAssets(label, remote) {
+async function verifyAssets(label, remote, token) {
   const byName = new Map(remote.map(item => [item.name, item]));
   for (const file of files) {
     const asset = byName.get(file.name);
     if (!asset || Number(asset.size) !== file.size || !asset.url) throw new Error(`${label} package missing or size mismatch: ${file.name}`);
-    const response = await fetch(asset.url, { redirect: 'follow' });
+    const response = await fetch(asset.url, {
+      redirect: 'follow',
+      headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+    });
     if (!response.ok) throw new Error(`${label} package download failed: ${file.name} (${response.status})`);
     const bytes = Buffer.from(await response.arrayBuffer());
     const sha256 = createHash('sha256').update(bytes).digest('hex');
     if (bytes.length !== file.size || sha256 !== file.sha256) throw new Error(`${label} package integrity mismatch: ${file.name}`);
   }
+}
+
+async function publishGithubRelease(releaseId) {
+  await request(`https://api.github.com/repos/DancingMusic/Release/releases/${releaseId}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ draft: false, prerelease: channel === 'beta' }),
+  });
 }
 
 async function putManifest(provider, content) {
@@ -143,13 +154,13 @@ const manifestCommand = [path.join(root, 'scripts/generate-update-manifest.mjs')
 execFileSync(process.execPath, manifestCommand, { stdio: 'inherit' });
 execFileSync(process.execPath, [path.join(root, 'scripts/validate-update-manifest.mjs'), manifestPath], { stdio: 'inherit' });
 
-const githubUrls = await githubRelease();
+const githubReleaseResult = await githubRelease();
 const giteeUrls = giteeToken ? await giteeRelease() : null;
 if (!giteeToken) console.warn('GITEE_RELEASE_TOKEN is not configured; publishing the verified GitHub mirror only.');
 
 const manifestValue = JSON.parse(await readFile(manifestPath, 'utf8'));
 for (const artifact of Object.values(manifestValue.artifacts)) {
-  const githubUrl = githubUrls.get(artifact.file);
+  const githubUrl = githubReleaseResult.urls.get(artifact.file);
   const giteeUrl = giteeUrls?.get(artifact.file);
   if (!githubUrl || (giteeToken && !giteeUrl)) throw new Error(`Mirror URL missing after upload: ${artifact.file}`);
   artifact.urls = [githubUrl, ...(giteeUrl ? [giteeUrl] : [])];
@@ -157,6 +168,9 @@ for (const artifact of Object.values(manifestValue.artifacts)) {
 const manifest = `${JSON.stringify(manifestValue, null, 2)}\n`;
 await writeFile(manifestPath, manifest, 'utf8');
 execFileSync(process.execPath, [path.join(root, 'scripts/validate-update-manifest.mjs'), manifestPath], { stdio: 'inherit' });
+
+// Make the staged GitHub assets public before the final manifest points at them.
+await publishGithubRelease(githubReleaseResult.id);
 
 // The manifest is intentionally the last write, after every configured provider passed size verification.
 await putManifest('github', manifest);

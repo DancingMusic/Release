@@ -16,6 +16,10 @@ packages and channel manifests here.
 - Every push to `DancingMusic/DancingMusic` `main` publishes a uniquely
   versioned beta package (for example, `0.2.0-dev.2.main.418.1`) so existing
   releases and assets remain immutable.
+- CI stages each verified platform package in a hidden GitHub Release draft,
+  rather than temporary GitHub Actions artifacts. The draft is made public only
+  after all packages have passed remote integrity verification; failed builds
+  remove the draft.
 - `v*` tag pushes remain build verification only. A manually confirmed
   `workflow_dispatch` publication is used for stable releases.
 - The public channel manifest remains the final write, after every configured
