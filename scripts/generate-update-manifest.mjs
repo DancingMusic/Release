@@ -89,7 +89,11 @@ for (const file of assetNames) {
 }
 
 if (!Object.keys(artifacts).length) throw new Error(`No supported packages found in ${assetsDir}`);
-const requiredPlatforms = ['darwin-arm64', 'darwin-x64', 'win32-x64', 'linux-x64'];
+// A public beta may omit a desktop platform whose native signing gate did not
+// pass. Stable releases still require every desktop installer.
+const requiredPlatforms = channel === 'stable'
+  ? ['darwin-arm64', 'darwin-x64', 'win32-x64', 'linux-x64']
+  : [];
 for (const platform of requiredPlatforms) {
   if (!artifacts[platform]) throw new Error(`Missing required desktop package for ${platform}`);
 }

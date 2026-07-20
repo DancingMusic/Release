@@ -19,7 +19,11 @@ packages and channel manifests here.
 - CI stages each verified platform package in a hidden GitHub Release draft,
   rather than temporary GitHub Actions artifacts. The draft is made public only
   after all packages have passed remote integrity verification; failed builds
-  remove the draft.
+  remove the draft. Public macOS packages (including beta) require Developer ID
+  signing, notarization and a successful Gatekeeper assessment; public Windows
+  installers require a trusted timestamped Authenticode signature. A beta may
+  omit a desktop platform that has not passed its native verification gate, but
+  it never publishes an unsigned installer for that platform.
 - `v*` tag pushes remain build verification only. A manually confirmed
   `workflow_dispatch` publication is used for stable releases.
 - The public channel manifest remains the final write, after every configured
