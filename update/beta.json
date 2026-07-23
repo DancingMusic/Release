@@ -1,40 +1,40 @@
 {
   "schemaVersion": 1,
   "channel": "beta",
-  "version": "0.2.0-dev.2.main.42.1",
-  "publishedAt": "2026-07-20T16:21:50.132Z",
-  "releaseNotesUrl": "https://github.com/DancingMusic/Release/releases/tag/v0.2.0-dev.2.main.42.1",
+  "version": "0.2.0-dev.2.main.43.1",
+  "publishedAt": "2026-07-23T18:11:47.934Z",
+  "releaseNotesUrl": "https://github.com/DancingMusic/Release/releases/tag/v0.2.0-dev.2.main.43.1",
   "artifacts": {
     "android-aab": {
-      "file": "DancingMusic-0.2.0-dev.2.main.42.1-android.aab",
-      "sha256": "d437af93810ec696de7f9e170badb8d5084644dd9341e2924412c84cba36e26b",
-      "size": 8108565,
+      "file": "DancingMusic-0.2.0-dev.2.main.43.1-android.aab",
+      "sha256": "4ad788b91196cc3ba798529449ada588a7e4dbd1dc0ec933aac0c8b32e87a480",
+      "size": 8109676,
       "urls": [
-        "https://github.com/DancingMusic/Release/releases/download/v0.2.0-dev.2.main.42.1/DancingMusic-0.2.0-dev.2.main.42.1-android.aab"
+        "https://github.com/DancingMusic/Release/releases/download/v0.2.0-dev.2.main.43.1/DancingMusic-0.2.0-dev.2.main.43.1-android.aab"
       ]
     },
     "android-apk": {
-      "file": "DancingMusic-0.2.0-dev.2.main.42.1-android.apk",
-      "sha256": "fdc0c5efdb7def6d7b009f2ef1fd21dd28dd6d536f38e281fc868d1bf3fd3575",
-      "size": 8134695,
+      "file": "DancingMusic-0.2.0-dev.2.main.43.1-android.apk",
+      "sha256": "315b31005ff349edd90b746d3220716fb850dc111c902d4bbc937cd543ad3c84",
+      "size": 8135816,
       "urls": [
-        "https://github.com/DancingMusic/Release/releases/download/v0.2.0-dev.2.main.42.1/DancingMusic-0.2.0-dev.2.main.42.1-android.apk"
+        "https://github.com/DancingMusic/Release/releases/download/v0.2.0-dev.2.main.43.1/DancingMusic-0.2.0-dev.2.main.43.1-android.apk"
       ]
     },
     "linux-x64": {
-      "file": "DancingMusic-0.2.0-dev.2.main.42.1-x86_64.AppImage",
-      "sha256": "86dd40456e90da85550c470903894810cdd26f7aaa23190fb5452be7cafb8936",
-      "size": 122057853,
+      "file": "DancingMusic-0.2.0-dev.2.main.43.1-x86_64.AppImage",
+      "sha256": "995b7bc98f67ee4b1a82f2e2f8a850fd9a12e5277a5f4d5f42186afc283b5728",
+      "size": 122057874,
       "urls": [
-        "https://github.com/DancingMusic/Release/releases/download/v0.2.0-dev.2.main.42.1/DancingMusic-0.2.0-dev.2.main.42.1-x86_64.AppImage"
+        "https://github.com/DancingMusic/Release/releases/download/v0.2.0-dev.2.main.43.1/DancingMusic-0.2.0-dev.2.main.43.1-x86_64.AppImage"
       ],
       "signature": {
         "type": "openpgp-detached",
-        "file": "DancingMusic-0.2.0-dev.2.main.42.1-x86_64.AppImage.asc",
-        "sha256": "894101110621edc08345ca01f62f8a93e3514d3ed0b79a1f94c72932b1237ce9",
+        "file": "DancingMusic-0.2.0-dev.2.main.43.1-x86_64.AppImage.asc",
+        "sha256": "64f2217ef37e488a981b05dba79a99d55e3e9ca48b82b379402c527c7e33a918",
         "size": 833,
         "urls": [
-          "https://github.com/DancingMusic/Release/releases/download/v0.2.0-dev.2.main.42.1/DancingMusic-0.2.0-dev.2.main.42.1-x86_64.AppImage.asc"
+          "https://github.com/DancingMusic/Release/releases/download/v0.2.0-dev.2.main.43.1/DancingMusic-0.2.0-dev.2.main.43.1-x86_64.AppImage.asc"
         ],
         "fingerprint": "D2F91F7BD1C47080F5005E7543F85B6528770BE3",
         "publicKey": {
@@ -42,7 +42,7 @@
           "sha256": "cf272b0dd56896506bd914154aaf425cac1eb845a72fa804160d78f7428c8c60",
           "size": 1688,
           "urls": [
-            "https://github.com/DancingMusic/Release/releases/download/v0.2.0-dev.2.main.42.1/DancingMusic-release-signing-key.asc"
+            "https://github.com/DancingMusic/Release/releases/download/v0.2.0-dev.2.main.43.1/DancingMusic-release-signing-key.asc"
           ]
         }
       }
