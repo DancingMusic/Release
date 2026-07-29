@@ -4,6 +4,7 @@ import { createHash } from 'node:crypto';
 import { readFile, readdir, stat, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { fetchPublishedAsset } from './published-asset-download.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const value = name => process.argv.find(item => item.startsWith(`--${name}=`))?.slice(name.length + 3);
@@ -122,12 +123,18 @@ async function verifyAssets(label, remote, token) {
   for (const file of files) {
     const asset = byName.get(file.name);
     if (!asset || Number(asset.size) !== file.size || !asset.url) throw new Error(`${label} package missing or size mismatch: ${file.name}`);
-    const response = await fetch(asset.url, {
-      redirect: 'follow',
-      headers: token ? {
-        Accept: 'application/octet-stream',
-        Authorization: `Bearer ${token}`,
-      } : undefined,
+    const response = await fetchPublishedAsset(asset.url, {
+      fetchImpl: (url, options) => fetch(url, {
+        ...options,
+        headers: token ? {
+          ...options.headers,
+          Accept: 'application/octet-stream',
+          Authorization: `Bearer ${token}`,
+        } : options.headers,
+      }),
+      onRetry: ({ attempt, delay, error }) => {
+        console.warn(`${label} package is not publicly available yet: ${file.name} (${error.message}); retry ${attempt} in ${delay}ms`);
+      },
     });
     if (!response.ok) throw new Error(`${label} package download failed: ${file.name} (${response.status})`);
     const bytes = Buffer.from(await response.arrayBuffer());

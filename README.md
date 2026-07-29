@@ -47,8 +47,10 @@ packages and channel manifests here.
 The manifest contract is documented by `update/schema.json`. Generate a
 candidate with `node scripts/generate-update-manifest.mjs` and validate it with
 `node scripts/validate-update-manifest.mjs` before publishing. CI uses
-`scripts/publish-mirrors.mjs`: it uploads public packages, downloads them back
-to verify filename, byte size and SHA-256 on both providers, and only then commits the identical channel
+`scripts/publish-mirrors.mjs`: it uploads public packages, waits through a
+bounded retry for a just-uploaded public URL to become available, then downloads
+them back to verify filename, byte size and SHA-256 on both providers. Only then
+does it commit the identical channel
 manifest to both `main` branches.
 
 Required secrets live in the host repository/environment, never in this repo:
