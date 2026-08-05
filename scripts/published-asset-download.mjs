@@ -1,4 +1,10 @@
-export const ASSET_VISIBILITY_RETRY_DELAYS_MS = [1_000, 2_000, 4_000, 8_000, 12_000];
+// GitHub can take several minutes to expose assets after a draft release is
+// promoted. Keep this finite so a broken URL still fails the release, while
+// covering the observed propagation window before the manifest is written.
+export const ASSET_VISIBILITY_RETRY_DELAYS_MS = [
+  1_000, 2_000, 4_000, 8_000, 15_000, 30_000,
+  45_000, 60_000, 90_000, 120_000, 120_000, 120_000,
+];
 
 function isRetryableStatus(status) {
   return status === 404 || status === 408 || status === 425 || status === 429 || status >= 500;
