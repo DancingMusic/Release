@@ -48,8 +48,9 @@ The manifest contract is documented by `update/schema.json`. Generate a
 candidate with `node scripts/generate-update-manifest.mjs` and validate it with
 `node scripts/validate-update-manifest.mjs` before publishing. CI uses
 `scripts/publish-mirrors.mjs`: it uploads public packages, waits through a
-bounded retry for a just-uploaded public URL to become available, then downloads
-them back to verify filename, byte size and SHA-256 on both providers. Only then
+bounded retry of up to ten minutes for a just-uploaded public URL to become
+available, then downloads them back to verify filename, byte size and SHA-256 on
+both providers. Only then
 does it commit the identical channel
 manifest to both `main` branches.
 
